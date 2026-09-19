@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CNN Vision Lab — MNIST Classifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#overview">
+      <span class="brand-mark">⌁</span>
+      <span>CNN<span class="brand-muted">.LAB</span></span>
+    </a>
+    <nav>
+      <a href="#overview" class="active">Overview</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#predict">Predict</a>
+      <a href="#insights">Insights</a>
+    </nav>
+    <div class="status-pill"><span class="pulse"></span> Model Lab</div>
+  </header>
+
+  <main>
+    <section class="hero" id="overview">
+      <div class="hero-copy">
+        <div class="eyebrow"><span></span> COMPUTER VISION • MNIST</div>
+        <h1>See how a <em>CNN</em><br>learns to read pixels.</h1>
+        <p>
+          An interactive interface for the image-classification experiment in your notebook:
+          preprocessing, Perceptron vs ANN vs CNN, training behavior, and digit prediction.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#predict">Try a prediction <span>→</span></a>
+          <a class="btn btn-ghost" href="#architecture">Explore the model</a>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="digit-orbit">
+          <div class="orbit-ring ring-one"></div>
+          <div class="orbit-ring ring-two"></div>
+          <div class="digit-card">
+            <span class="mini-label">INPUT</span>
+            <div class="digit-grid" id="heroGrid"></div>
+            <div class="digit-number">7</div>
+            <span class="confidence">28 × 28 PIXELS</span>
+          </div>
+          <div class="float-chip chip-a">Conv2D</div>
+          <div class="float-chip chip-b">ReLU</div>
+          <div class="float-chip chip-c">Softmax</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="metrics-grid">
+      <article class="metric-card">
+        <span class="metric-label">Input shape</span>
+        <strong>28 × 28</strong>
+        <small>grayscale image</small>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Output classes</span>
+        <strong>10</strong>
+        <small>digits 0 → 9</small>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">CNN filters</span>
+        <strong>32 → 64</strong>
+        <small>feature extraction</small>
+      </article>
+      <article class="metric-card accent-card">
+        <span class="metric-label">Training setup</span>
+        <strong>5 epochs</strong>
+        <small>batch size 32 • Adam</small>
+      </article>
+    </section>
+
+    <section class="section" id="architecture">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow"><span></span> MODEL PIPELINE</span>
+          <h2>From pixels to prediction.</h2>
+        </div>
+        <p>The CNN defined in the notebook transforms a 28×28 image into probabilities across ten digit classes.</p>
+      </div>
+
+      <div class="pipeline">
+        <div class="pipeline-node">
+          <span class="node-index">01</span>
+          <div class="node-icon">▦</div>
+          <h3>Input</h3>
+          <p>28 × 28 × 1</p>
+        </div>
+        <div class="connector"></div>
+        <div class="pipeline-node highlight">
+          <span class="node-index">02</span>
+          <div class="node-icon">✣</div>
+          <h3>Conv2D</h3>
+          <p>32 filters • 3×3</p>
+        </div>
+        <div class="connector"></div>
+        <div class="pipeline-node">
+          <span class="node-index">03</span>
+          <div class="node-icon">⊞</div>
+          <h3>MaxPool</h3>
+          <p>2 × 2</p>
+        </div>
+        <div class="connector"></div>
+        <div class="pipeline-node highlight">
+          <span class="node-index">04</span>
+          <div class="node-icon">✣</div>
+          <h3>Conv2D</h3>
+          <p>64 filters • 3×3</p>
+        </div>
+        <div class="connector"></div>
+        <div class="pipeline-node">
+          <span class="node-index">05</span>
+          <div class="node-icon">◫</div>
+          <h3>Dense</h3>
+          <p>128 + Dropout</p>
+        </div>
+        <div class="connector"></div>
+        <div class="pipeline-node output-node">
+          <span class="node-index">06</span>
+          <div class="node-icon">◎</div>
+          <h3>Softmax</h3>
+          <p>10 classes</p>
+        </div>
+      </div>
+
+      <div class="code-card">
+        <div class="code-top"><span></span><span></span><span></span><label>cnn architecture</label></div>
+        <pre><code>Conv2D(32, kernel_size=(3,3), activation="relu")
+  ↓ MaxPooling2D(pool_size=(2,2))
+Conv2D(64, kernel_size=(3,3), activation="relu")
+  ↓ MaxPooling2D(pool_size=(2,2))
+Flatten() → Dense(128, activation="relu")
+  ↓ Dropout(0.5)
+Dense(10, activation="softmax")</code></pre>
+      </div>
+    </section>
+
+    <section class="section comparison" id="insights">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow"><span></span> EXPERIMENT</span>
+          <h2>Three models. One benchmark.</h2>
+        </div>
+        <p>Your notebook evaluates a Perceptron, an ANN, and a CNN on the same MNIST test set.</p>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <div>
+            <h3>Validation accuracy</h3>
+            <span>Replace the demo values with notebook history values if desired.</span>
+          </div>
+          <div class="legend">
+            <span><i class="dot p"></i> Perceptron</span>
+            <span><i class="dot a"></i> ANN</span>
+            <span><i class="dot c"></i> CNN</span>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="accuracyChart"></canvas></div>
+      </div>
+
+      <div class="comparison-cards">
+        <div class="model-card">
+          <span class="model-tag">BASELINE</span>
+          <h3>Perceptron</h3>
+          <p>Flatten → Dense(10)</p>
+          <div class="bar"><span style="width: 36%"></span></div>
+          <small>Linear-style baseline</small>
+        </div>
+        <div class="model-card">
+          <span class="model-tag">FULLY CONNECTED</span>
+          <h3>ANN</h3>
+          <p>128 → 64 → 10</p>
+          <div class="bar"><span style="width: 72%"></span></div>
+          <small>Non-linear feature learning</small>
+        </div>
+        <div class="model-card featured">
+          <span class="model-tag">VISION MODEL</span>
+          <h3>CNN</h3>
+          <p>32 → 64 filters → 128</p>
+          <div class="bar"><span style="width: 92%"></span></div>
+          <small>Spatial feature extraction</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="section predictor-section" id="predict">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow"><span></span> LIVE PREDICTOR</span>
+          <h2>Drop in a handwritten digit.</h2>
+        </div>
+        <p>Upload a 28×28-style digit image. The UI previews it instantly and can call a <code>/predict</code> endpoint when your Python backend is connected.</p>
+      </div>
+
+      <div class="predictor">
+        <div class="upload-panel" id="dropZone">
+          <input id="fileInput" type="file" accept="image/*" hidden />
+          <div class="upload-icon">↑</div>
+          <h3>Drop image here</h3>
+          <p>or click to browse • PNG / JPG / JPEG</p>
+          <button class="btn btn-ghost" id="browseBtn">Choose image</button>
+          <div class="upload-note">Tip: centered black-on-white digits work best for MNIST-style inference.</div>
+        </div>
+
+        <div class="preview-panel">
+          <div class="preview-head">
+            <span>INPUT PREVIEW</span>
+            <button id="clearBtn" class="text-btn">Clear</button>
+          </div>
+          <div class="preview-stage">
+            <canvas id="previewCanvas" width="280" height="280"></canvas>
+            <div id="emptyPreview" class="empty-preview">
+              <span>28×28</span>
+              Waiting for an image
+            </div>
+          </div>
+        </div>
+
+        <div class="result-panel">
+          <div class="result-head"><span>PREDICTION</span><span id="apiStatus" class="api-status">DEMO MODE</span></div>
+          <div class="prediction-value"><span id="predictedDigit">—</span></div>
+          <div class="prediction-label">Predicted digit</div>
+          <div class="confidence-row">
+            <span>Confidence</span>
+            <strong id="confidenceValue">—</strong>
+          </div>
+          <div class="confidence-track"><span id="confidenceBar"></span></div>
+          <div class="probability-list" id="probabilityList"></div>
+          <button class="btn btn-primary full" id="predictBtn">Run prediction <span>↗</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer-note">
+      <div>
+        <span class="eyebrow"><span></span> PROJECT NOTES</span>
+        <h2>Built around your notebook.</h2>
+      </div>
+      <p>
+        Dataset: <strong>mnist_train.csv</strong> + <strong>mnist_test.csv</strong>. Pixels are normalized to [0, 1],
+        reshaped to 28×28, and labels are one-hot encoded for the Keras classifiers.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <span>© CNN.LAB</span>
+    <span>Image Classification • TensorFlow / Keras</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

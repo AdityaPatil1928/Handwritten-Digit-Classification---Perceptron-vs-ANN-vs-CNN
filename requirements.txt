@@ -1,0 +1,8 @@
+# Python environment for the CNN notebook / optional prediction API
+numpy
+pandas
+scikit-learn
+tensorflow
+matplotlib
+seaborn
+flask
