@@ -7,7 +7,9 @@ import tensorflow as tf
 
 app = Flask(__name__, static_folder='.', template_folder='.')
 
-MODEL_PATH = "cnn_mnist_model.h5"
+# Set relative path based on app directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "cnn_mnist_model.h5")
 model = None
 
 def load_keras_model():
@@ -21,6 +23,9 @@ def load_keras_model():
             print(f"Error loading model: {e}")
     else:
         print(f"Warning: {MODEL_PATH} not found. Running in demo/mock mode.")
+
+# Call immediately so Gunicorn loads the model on Render boot
+load_keras_model()
 
 def preprocess_image(image_bytes):
     """
@@ -101,5 +106,4 @@ def predict():
         return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    load_keras_model()
     app.run(host='0.0.0.0', port=5000, debug=True)
