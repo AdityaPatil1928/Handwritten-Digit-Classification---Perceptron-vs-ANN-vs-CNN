@@ -5,13 +5,16 @@ from PIL import Image, ImageOps
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 
+# Determine absolute base directory path for reliable file loading on Render
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Initialize Flask app
-# Point static_folder and template_folder to '.' if files are in the root directory
-app = Flask(__name__, static_folder='.', template_folder='.')
-CORS(app)  # Enables Cross-Origin Resource Sharing for local testing (e.g. Live Server port 5500)
+# Point static_folder and template_folder to base directory if static/template files are in root
+app = Flask(__name__, static_folder=BASE_DIR, template_folder=BASE_DIR)
+CORS(app)  # Enables Cross-Origin Resource Sharing
 
 # --- Model Loading ---
-MODEL_PATH = "model.h5"  # Adjust path if your saved Keras model has a different name
+MODEL_PATH = os.path.join(BASE_DIR, "model.h5")
 model = None
 
 if os.path.exists(MODEL_PATH):
@@ -32,7 +35,6 @@ def preprocess_image(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert('L')
     
     # Invert colors if the image is black digit on white background (MNIST requires white digit on black)
-    # Checks average brightness of corners
     img_np = np.array(img)
     corners = [img_np[0, 0], img_np[0, -1], img_np[-1, 0], img_np[-1, -1]]
     if np.mean(corners) > 127:
@@ -60,7 +62,7 @@ def index():
 @app.route('/<path:path>')
 def serve_static(path):
     """Serves CSS, JS, and image assets."""
-    return send_from_directory('.', path)
+    return send_from_directory(BASE_DIR, path)
 
 
 @app.route('/predict', methods=['POST'])
@@ -101,5 +103,7 @@ def predict():
 
 if __name__ == '__main__':
     # Binds dynamically to PORT env variable supplied by Render, defaulting to 5000 locally
+    # Disables debug mode in production deployment mode
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    is_debug = os.environ.get('FLASK_ENV') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=is_debug)
