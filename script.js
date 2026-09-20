@@ -107,27 +107,42 @@ function buildProbabilities(probs){
 buildProbabilities([]);
 
 predictBtn.addEventListener("click", async () => {
-  if(canvas.style.display === "none"){
-    $("#apiStatus").textContent="ADD IMAGE";
+  if (canvas.style.display === "none") {
+    $("#apiStatus").textContent = "ADD IMAGE";
     return;
   }
 
-  // If a Flask/FastAPI backend exposing POST /predict is present,
-  // send the uploaded image there. Otherwise show a transparent demo state.
-  try{
-    canvas.toBlob(async blob => {
-      const form = new FormData();
-      form.append("file", blob, "digit.png");
-      const response = await fetch("/predict", {method:"POST", body:form});
-      if(!response.ok) throw new Error("No prediction endpoint");
-      const data = await response.json();
-      const probs = Array.isArray(data.probabilities) ? data.probabilities : [];
-      const digit = Number.isFinite(data.prediction) ? data.prediction : (probs.length ? probs.indexOf(Math.max(...probs)) : "—");
-      const confidence = probs.length ? Math.max(...probs) : Number(data.confidence || 0);
-      showResult(digit, confidence, probs);
-      $("#apiStatus").textContent="LIVE MODEL";
+  // Convert canvas to Blob using a Promise to keep try...catch working
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+
+  const form = new FormData();
+  form.append("file", blob, "digit.png");
+
+  try {
+    const response = await fetch("/predict", {
+      method: "POST",
+      body: form,
     });
-  }catch(err){
+
+    if (!response.ok) {
+      throw new Error("No prediction endpoint or server error");
+    }
+
+    const data = await response.json();
+    const probs = Array.isArray(data.probabilities) ? data.probabilities : [];
+    const digit = Number.isFinite(data.prediction)
+      ? data.prediction
+      : probs.length
+      ? probs.indexOf(Math.max(...probs))
+      : "—";
+    const confidence = probs.length
+      ? Math.max(...probs)
+      : Number(data.confidence || 0);
+
+    showResult(digit, confidence, probs);
+    $("#apiStatus").textContent = "LIVE MODEL";
+  } catch (err) {
+    console.warn("Prediction fetch failed:", err);
     demoPrediction();
   }
 });
