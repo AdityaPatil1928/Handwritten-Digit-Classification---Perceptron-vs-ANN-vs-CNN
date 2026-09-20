@@ -212,14 +212,14 @@ Dense(10, activation="softmax")</code></pre>
           <div class="upload-icon">↑</div>
           <h3>Drop image here</h3>
           <p>or click to browse • PNG / JPG / JPEG</p>
-          <button class="btn btn-ghost" id="browseBtn">Choose image</button>
+          <button type="button" class="btn btn-ghost" id="browseBtn">Choose image</button>
           <div class="upload-note">Tip: centered black-on-white digits work best for MNIST-style inference.</div>
         </div>
 
         <div class="preview-panel">
           <div class="preview-head">
             <span>INPUT PREVIEW</span>
-            <button id="clearBtn" class="text-btn">Clear</button>
+            <button id="clearBtn" class="text-btn" type="button">Clear</button>
           </div>
           <div class="preview-stage">
             <canvas id="previewCanvas" width="280" height="280"></canvas>
@@ -240,7 +240,7 @@ Dense(10, activation="softmax")</code></pre>
           </div>
           <div class="confidence-track"><span id="confidenceBar"></span></div>
           <div class="probability-list" id="probabilityList"></div>
-          <button class="btn btn-primary full" id="predictBtn">Run prediction <span>↗</span></button>
+          <button type="button" class="btn btn-primary full" id="predictBtn">Run prediction <span>↗</span></button>
         </div>
       </div>
     </section>

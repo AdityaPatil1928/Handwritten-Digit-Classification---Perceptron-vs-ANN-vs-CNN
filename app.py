@@ -1,99 +1,92 @@
 import os
 import io
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from flask import Flask, request, jsonify, render_template, send_from_directory
-import tensorflow as tf
+from flask_cors import CORS
 
+# Initialize Flask app
+# Point static_folder and template_folder to '.' if files are in the root directory
 app = Flask(__name__, static_folder='.', template_folder='.')
+CORS(app)  # Enables Cross-Origin Resource Sharing for local testing (e.g. Live Server port 5500)
 
-# Set relative path based on app directory
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "cnn_mnist_model.h5")
+# --- Model Loading ---
+MODEL_PATH = "model.h5"  # Adjust path if your saved Keras model has a different name
 model = None
 
-def load_keras_model():
-    """Load the trained Keras CNN model if available."""
-    global model
-    if os.path.exists(MODEL_PATH):
-        try:
-            model = tf.keras.models.load_model(MODEL_PATH)
-            print(f"Model successfully loaded from {MODEL_PATH}")
-        except Exception as e:
-            print(f"Error loading model: {e}")
-    else:
-        print(f"Warning: {MODEL_PATH} not found. Running in demo/mock mode.")
+if os.path.exists(MODEL_PATH):
+    try:
+        import tensorflow as tf
+        model = tf.keras.models.load_model(MODEL_PATH)
+        print(f"Successfully loaded model from {MODEL_PATH}")
+    except Exception as e:
+        print(f"Error loading model: {e}. Running in fallback mode.")
+else:
+    print(f"Model file '{MODEL_PATH}' not found. Serving predictions in fallback/demo mode.")
 
-# Call immediately so Gunicorn loads the model on Render boot
-load_keras_model()
 
 def preprocess_image(image_bytes):
     """
-    Preprocess user input image to match MNIST CNN model input:
-    - Convert to Grayscale
-    - Resize to 28x28
-    - Invert colors if necessary (MNIST uses white text on black background)
-    - Normalize pixel values to [0, 1]
-    - Reshape to (1, 28, 28, 1)
+    Converts uploaded PNG/JPEG bytes into normalized MNIST 28x28 grayscale format.
     """
     img = Image.open(io.BytesIO(image_bytes)).convert('L')
     
-    # Resize to 28x28
+    # Invert colors if the image is black digit on white background (MNIST requires white digit on black)
+    # Checks average brightness of corners
+    img_np = np.array(img)
+    corners = [img_np[0, 0], img_np[0, -1], img_np[-1, 0], img_np[-1, -1]]
+    if np.mean(corners) > 127:
+        img = ImageOps.invert(img)
+
+    # Resize to MNIST input shape (28, 28)
     img = img.resize((28, 28), Image.Resampling.LANCZOS)
     
-    img_array = np.array(img, dtype='float32')
+    # Normalize pixel values to [0.0, 1.0] range
+    tensor = np.array(img, dtype=np.float32) / 255.0
     
-    # Invert image if background is white (average pixel value > 127)
-    if np.mean(img_array) > 127:
-        img_array = 255.0 - img_array
-        
-    # Normalize pixel values
-    img_array = img_array / 255.0
-    
-    # Reshape for CNN input: (batch_size, height, width, channels)
-    img_tensor = img_array.reshape(1, 28, 28, 1)
-    return img_tensor
+    # Reshape for Keras input tensor: (batch_size, width, height, channels) -> (1, 28, 28, 1)
+    tensor = np.expand_dims(tensor, axis=(0, -1))
+    return tensor
+
+
+# --- Routes ---
 
 @app.route('/')
 def index():
-    """Serve the index.html template."""
+    """Serves the main HTML page."""
     return render_template('index.html')
 
-@app.route('/style.css')
-def serve_css():
-    """Serve static CSS file."""
-    return send_from_directory('.', 'style.css')
 
-@app.route('/script.js')
-def serve_js():
-    """Serve static JavaScript file."""
-    return send_from_directory('.', 'script.js')
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serves CSS, JS, and image assets."""
+    return send_from_directory('.', path)
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    """API Endpoint to process image and return predictions."""
-    if 'image' not in request.files and 'file' not in request.files:
-        return jsonify({'error': 'No image file provided in request'}), 400
-    
-    file = request.files.get('image') or request.files.get('file')
-    if file.filename == '':
-        return jsonify({'error': 'Empty filename provided'}), 400
+    """Handles POST image uploads and returns prediction results."""
+    if 'file' not in request.files and 'image' not in request.files:
+        return jsonify({'error': 'No image file uploaded'}), 400
+
+    file = request.files.get('file') or request.files.get('image')
+    if not file or file.filename == '':
+        return jsonify({'error': 'Empty filename'}), 400
 
     try:
         image_bytes = file.read()
         input_tensor = preprocess_image(image_bytes)
-        
+
         if model is not None:
-            # Predict with the loaded Keras CNN model
-            predictions = model.predict(input_tensor)[0]
-            predicted_class = int(np.argmax(predictions))
-            confidence = float(np.max(predictions))
-            probabilities = [float(p) for p in predictions]
+            raw_predictions = model.predict(input_tensor, verbose=0)[0]
+            predicted_class = int(np.argmax(raw_predictions))
+            confidence = float(np.max(raw_predictions))
+            probabilities = [float(p) for p in raw_predictions]
         else:
-            # Mock response if model file is not saved yet
+            # Fallback mock response if model file is absent during testing
             predicted_class = 7
-            confidence = 0.985
-            probabilities = [0.001, 0.002, 0.001, 0.003, 0.002, 0.001, 0.005, 0.985, 0.001, 0.001]
+            confidence = 0.982
+            probabilities = [0.001, 0.002, 0.001, 0.003, 0.002, 0.001, 0.003, 0.982, 0.002, 0.003]
 
         return jsonify({
             'success': True,
@@ -105,5 +98,8 @@ def predict():
     except Exception as e:
         return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
 
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Binds dynamically to PORT env variable supplied by Render, defaulting to 5000 locally
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
