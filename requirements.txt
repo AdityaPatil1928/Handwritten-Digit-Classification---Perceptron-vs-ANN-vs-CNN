@@ -1,14 +1,6 @@
-# Python environment for the CNN notebook / optional prediction API
-
-pandas
-scikit-learn
-
-matplotlib
-seaborn
-
+tensorflow-cpu==2.16.1
 Flask==3.0.3
-flask-cors==4.0.1
 gunicorn==22.0.0
 numpy==1.26.4
 Pillow==10.3.0
-tensorflow==2.16.1
+flask-cors==4.0.1
